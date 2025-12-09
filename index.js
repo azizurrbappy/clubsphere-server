@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 3000;
@@ -21,9 +22,24 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
+    const db = client.db('clubsphere');
+    const usersCollection = db.collection('users');
+
     await client.connect();
 
     // All apis endpoint
+    app.post('/users', async (req, res) => {
+      const email = req.body.email;
+      const query = { email: email };
+      const existingUser = await usersCollection.findOne(query);
+
+      if (!existingUser) {
+        const result = await usersCollection.insertOne(req.body);
+        return res.send(result);
+      }
+
+      res.send('This email is already registered. Please login instead.');
+    });
 
     await client.db('admin').command({ ping: 1 });
     console.log(
