@@ -29,16 +29,51 @@ async function run() {
 
     // All apis endpoint
     app.post('/users', async (req, res) => {
-      const email = req.body.email;
-      const query = { email: email };
-      const existingUser = await usersCollection.findOne(query);
+      try {
+        const email = req.body.email;
+        const { providerId } = req.query;
+        console.log(providerId);
 
-      if (!existingUser) {
+        // Check if user already exists
+        const query = { email: email };
+        const existingUser = await usersCollection.findOne(query);
+
+        if (providerId && existingUser) {
+          return res.status(409).json({
+            error: 'This email is already registered. Please login instead.',
+          });
+        }
+
+        if (existingUser) {
+          return res.send(
+            'This email is already registered. Please login instead.'
+          );
+        }
+
+        // Insert new user
         const result = await usersCollection.insertOne(req.body);
-        return res.send(result);
+        return res.status(201).json(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
       }
+    });
 
-      res.send('This email is already registered. Please login instead.');
+    app.get('/user', async (req, res) => {
+      try {
+        const { email } = req.query;
+        const query = { email: email };
+
+        const options = {
+          projection: { _id: 0, email: 1 },
+        };
+
+        const result = await usersCollection.findOne(query, options);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
     });
 
     await client.db('admin').command({ ping: 1 });
