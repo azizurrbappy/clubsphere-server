@@ -159,12 +159,25 @@ async function run() {
         const { id } = req.query;
         const clubData = req.body;
 
-        const query = { _id: id };
+        const query = { _id: new ObjectId(id) };
         const updateDocument = {
           $set: clubData,
         };
 
         const result = await clubsCollection.updateOne(query, updateDocument);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    app.delete('/club', async (req, res) => {
+      try {
+        const { id } = req.query;
+        const query = { _id: new ObjectId(id) };
+
+        const result = await clubsCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
         console.log(error);
