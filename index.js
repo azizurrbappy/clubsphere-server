@@ -25,6 +25,7 @@ async function run() {
     const db = client.db('clubsphere');
     const usersCollection = db.collection('users');
     const clubsCollection = db.collection('clubs');
+    const membershipCollection = db.collection('membership');
 
     await client.connect();
 
@@ -129,6 +130,25 @@ async function run() {
       }
     });
 
+    // Club Manger Dashboard Stats
+    app.get('/manager-dash', async (req, res) => {
+      try {
+        const { managerEmail } = req.query;
+        const query = { managerEmail: managerEmail };
+        const totalClubs = await clubsCollection.countDocuments(query);
+
+        res.send({
+          totalClubs: totalClubs || 0,
+          totalMembers: 0,
+          totalEvents: 0,
+          totalPayment: 0,
+        });
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
     // Club Manger
     app.post('/club', async (req, res) => {
       try {
@@ -142,8 +162,26 @@ async function run() {
 
     app.get('/clubs', async (req, res) => {
       try {
-        const { managerEmail } = req.query;
-        const query = { managerEmail: managerEmail };
+        const { managerEmail, status, category, sort } = req.query;
+        const query = {};
+        const options = {};
+
+        if (managerEmail) {
+          query.managerEmail = managerEmail;
+        }
+        if (status) {
+          query.status = 'approved';
+        }
+        if (category) {
+          query.category = category;
+        }
+        if (sort === 'Newest First') {
+          options.sort = { createdAt: -1 };
+        } else {
+          options.sort = { createdAt: 1 };
+        }
+
+        console.log(options);
 
         const cursor = clubsCollection.find(query);
         const result = await cursor.toArray();
@@ -172,6 +210,25 @@ async function run() {
       }
     });
 
+    app.patch('/club-status', async (req, res) => {
+      try {
+        const { id, status } = req.query;
+
+        console.log(id, status);
+
+        const query = { _id: new ObjectId(id) };
+        const updateDocument = {
+          $set: { status: status },
+        };
+
+        const result = await clubsCollection.updateOne(query, updateDocument);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
     app.delete('/club', async (req, res) => {
       try {
         const { id } = req.query;
@@ -179,6 +236,49 @@ async function run() {
 
         const result = await clubsCollection.deleteOne(query);
         res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    app.get('/club-details/:clubID', async (req, res) => {
+      try {
+        const { clubID } = req.params;
+        const query = { _id: new ObjectId(clubID) };
+
+        const result = await clubsCollection.findOne(query);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    // Membership
+    app.post('/membership', async (req, res) => {
+      try {
+        const membershipData = req.body;
+        const { clubID, userEmail } = membershipData;
+
+        // Check if membership already exists
+        const query = { clubID: clubID, userEmail: userEmail };
+        const existingMembership = await membershipCollection.findOne(query);
+
+        if (existingMembership) {
+          return res.status(200).json({
+            message: 'Membership already exists!',
+            data: existingMembership,
+          });
+        }
+
+        // Insert new membership
+        const result = await membershipCollection.insertOne(membershipData);
+
+        return res.status(201).json({
+          message: 'You have received a 6-month membership!',
+          data: result,
+        });
       } catch (error) {
         console.log(error);
         res.status(500).json({ error: 'Internal Server Error' });
