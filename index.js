@@ -27,7 +27,7 @@ async function run() {
     const clubsCollection = db.collection('clubs');
     const membershipCollection = db.collection('membership');
 
-    await client.connect();
+    // await client.connect();
 
     // All user apis endpoint
     app.post('/users', async (req, res) => {
@@ -164,7 +164,7 @@ async function run() {
       try {
         const { managerEmail, status, category, sort } = req.query;
         const query = {};
-        const options = {};
+        const sortOption = {};
 
         if (managerEmail) {
           query.managerEmail = managerEmail;
@@ -173,17 +173,13 @@ async function run() {
           query.status = 'approved';
         }
         if (category) {
-          query.category = category;
+          query['category'] = category;
         }
-        if (sort === 'Newest First') {
-          options.sort = { createdAt: -1 };
-        } else {
-          options.sort = { createdAt: 1 };
+        if (sort) {
+          sortOption['createdAt'] = sort === 'Newest First' ? 1 : -1;
         }
 
-        console.log(options);
-
-        const cursor = clubsCollection.find(query);
+        const cursor = clubsCollection.find(query).sort(sortOption);
         const result = await cursor.toArray();
         res.send(result);
       } catch (error) {
@@ -286,10 +282,10 @@ async function run() {
     });
 
     //////////////////////////////////////////////
-    await client.db('admin').command({ ping: 1 });
-    console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
-    );
+    // await client.db('admin').command({ ping: 1 });
+    // console.log(
+    //   'Pinged your deployment. You successfully connected to MongoDB!'
+    // );
   } finally {
     // await client.close();
   }
